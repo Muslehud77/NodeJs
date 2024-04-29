@@ -32,6 +32,8 @@ async function run() {
     );
 
 
+     const postsCollection = client.db("postsCollection").collection("posts");
+
     const server = http.createServer((req, res) => {
       console.log(req.url, req.method);
   
@@ -70,6 +72,26 @@ async function run() {
           }
         });
       }
+      else if(pathname === '/create-post' && req.method === 'POST'){
+        let body = ''
+
+        req.on('data',(buffer)=>{
+          body = buffer.toString();
+        })
+
+        req.on("end",async ()=>{
+
+          const data = JSON.parse(body)
+          const result =  await postsCollection.insertOne(data)
+          console.log(result);
+
+            res.writeHead(200, { "Content-type": "text/html" });
+            res.end(JSON.stringify({message:"post created successfully!"}))
+        })
+
+      }else{
+        res.end("not found")
+      }
     });
   
   server.listen(5000, "127.0.0.1", () => {
@@ -79,7 +101,7 @@ async function run() {
 
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
