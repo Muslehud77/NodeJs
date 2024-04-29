@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const localURI = "mongodb://localhost:27017";
 const http = require("http");
 const url = require("url");
@@ -34,7 +34,7 @@ async function run() {
 
      const postsCollection = client.db("postsCollection").collection("posts");
 
-    const server = http.createServer((req, res) => {
+    const server = http.createServer(async(req, res) => {
       console.log(req.url, req.method);
   
       const parsedURL = new URL(req.url, `http://${req.headers.host}`);
@@ -83,14 +83,51 @@ async function run() {
 
           const data = JSON.parse(body)
           const result =  await postsCollection.insertOne(data)
-          console.log(result);
-
-            res.writeHead(200, { "Content-type": "text/html" });
-            res.end(JSON.stringify({message:"post created successfully!"}))
+         
+            res.writeHead(200, { "Content-type": "application/json" });
+            res.end(JSON.stringify({message:"post created successfully!",data:result}))
         })
 
-      }else{
-        res.end("not found")
+      }else if (pathname.startsWith("/update-post") && req.method === "PATCH") {
+        const postId = pathname.split("/")[2];
+        let body = "";
+
+        req.on("data", (buffer) => {
+          body = buffer.toString();
+        });
+
+        req.on("end", async () => {
+          const data = JSON.parse(body);
+          const id = { _id: new ObjectId(postId) };
+          const result = await postsCollection.updateOne(id, { $set: data });
+
+          res.writeHead(200, { "Content-type": "application/json" });
+          res.end(
+            JSON.stringify({
+              message: "post updated successfully!",
+              data: result,
+            })
+          );
+        });
+      } else if (
+        pathname.startsWith("/delete-post") &&
+        req.method === "DELETE"
+      ) {
+        const postId = pathname.split("/")[2];
+     
+          const id = { _id: new ObjectId(postId) };
+          const result = await postsCollection.deleteOne(id);
+
+          res.writeHead(200, { "Content-type": "application/json" });
+          res.end(
+            JSON.stringify({
+              message: "post deleted successfully!",
+              data: result,
+            })
+          );
+        
+      } else {
+        res.end("not found");
       }
     });
   
